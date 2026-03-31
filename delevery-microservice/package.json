@@ -1,0 +1,39 @@
+{
+  "name": "delivery-service",
+  "version": "1.0.0",
+  "description": "Production-ready Delivery microservice for a Food Delivery Platform",
+  "main": "server.js",
+  "author": "Food Delivery Platform Team",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "lint": "node --check app.js server.js controllers/**/*.js services/**/*.js routes/**/*.js models/**/*.js config/**/*.js middleware/**/*.js utils/**/*.js"
+  },
+  "keywords": [
+    "delivery",
+    "microservice",
+    "food-delivery",
+    "express",
+    "nodejs"
+  ],
+  "dependencies": {
+    "axios": "^1.14.0",
+    "axios-retry": "^4.5.0",
+    "dotenv": "^17.3.1",
+    "express": "^4.22.1",
+    "express-async-errors": "^3.1.1",
+    "joi": "^18.1.1",
+    "mongoose": "^9.3.3",
+    "morgan": "^1.10.1",
+    "redis": "^5.11.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^13.0.0",
+    "winston": "^3.19.0"
+  }
+}
+

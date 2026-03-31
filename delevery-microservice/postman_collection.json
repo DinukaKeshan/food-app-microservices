@@ -1,0 +1,199 @@
+{
+  "info": {
+    "name": "Delivery Service API",
+    "description": "Production-ready Delivery microservice for a Food Delivery Platform.\n\nBase URL: http://localhost:3003\n\nEndpoints:\n- Partner Management\n- Delivery Operations\n- Delivery Zones\n- Health Check\n- Swagger Docs",
+    "_postman_id": "delivery-service-collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3003", "type": "string" },
+    { "key": "partnerId", "value": "", "type": "string" },
+    { "key": "deliveryId", "value": "", "type": "string" },
+    { "key": "orderId", "value": "order_001", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/health",
+            "description": "Returns service health, uptime, and environment info."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Partner Management",
+      "item": [
+        {
+          "name": "Create Partner",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('partnerId', body.data.partnerId);",
+                  "  pm.test('Partner created', () => pm.expect(body.success).to.be.true);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/delivery/partners",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"phone\": \"+1-555-123-4567\",\n  \"vehicleType\": \"MOTORCYCLE\",\n  \"licenseNumber\": \"DL-1234567890\",\n  \"deliveryZones\": [\"downtown\", \"midtown\"]\n}"
+            },
+            "description": "Register a new delivery partner."
+          }
+        },
+        {
+          "name": "Get Partner by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/delivery/partner/{{partnerId}}",
+            "description": "Fetch delivery partner details by partnerId."
+          }
+        },
+        {
+          "name": "Get Partner Delivery History",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/delivery/partner/{{partnerId}}/history?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "delivery", "partner", "{{partnerId}}", "history"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "status", "value": "DELIVERED", "disabled": true }
+              ]
+            },
+            "description": "Paginated delivery history for a partner. Filter by status optionally."
+          }
+        },
+        {
+          "name": "Update Partner Status",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/delivery/partner/{{partnerId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentStatus\": \"AVAILABLE\"\n}"
+            },
+            "description": "Update partner availability: AVAILABLE | BUSY | OFFLINE"
+          }
+        },
+        {
+          "name": "Delete (Deactivate) Partner",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/delivery/partners/{{partnerId}}",
+            "description": "Soft-deletes a partner — sets isActive=false and status=OFFLINE."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delivery Operations",
+      "item": [
+        {
+          "name": "Assign Delivery",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('deliveryId', body.data.deliveryId);",
+                  "  pm.test('Delivery assigned', () => pm.expect(body.success).to.be.true);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/delivery/assign",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"partnerId\": \"{{partnerId}}\",\n  \"distanceToRestaurant\": 1.5,\n  \"distanceToCustomer\": 3.2,\n  \"estimatedTime\": 20,\n  \"deliveryEarnings\": 5.50\n}"
+            },
+            "description": "Assigns an available partner to an order. Verifies order via Order Service."
+          }
+        },
+        {
+          "name": "Track Delivery by Order ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/delivery/track/{{orderId}}",
+            "description": "Returns real-time delivery status + location (from Redis cache first)."
+          }
+        },
+        {
+          "name": "Update Delivery Status → IN_TRANSIT",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/delivery/{{deliveryId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_TRANSIT\"\n}"
+            },
+            "description": "Progress delivery to IN_TRANSIT. Notifications sent automatically."
+          }
+        },
+        {
+          "name": "Update Delivery Status → DELIVERED",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/delivery/{{deliveryId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"DELIVERED\"\n}"
+            },
+            "description": "Mark delivery as DELIVERED. Frees the partner and clears Redis location cache."
+          }
+        },
+        {
+          "name": "Update Partner Location (Real-time)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/delivery/{{deliveryId}}/location",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 40.7128,\n  \"longitude\": -74.0060\n}"
+            },
+            "description": "Update GPS coordinates. Stored in Redis (TTL=5min) and persisted to MongoDB."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Zones",
+      "item": [
+        {
+          "name": "Get All Delivery Zones",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/delivery/zones",
+            "description": "Returns all active delivery zones with coverage radius and fare info."
+          }
+        }
+      ]
+    }
+  ]
+}
