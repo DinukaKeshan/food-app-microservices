@@ -28,5 +28,16 @@ app.use(errorHandler);
 
 // --------------- Start Server ---------------
 app.listen(PORT, () => {
-  console.log(`\n🚀 API Gateway is running on http://localhost:${PORT}\n`);
+  const base = `http://localhost:${PORT}`;
+
+  console.log(`\n🚀 API Gateway is running on ${base}\n`);
+  console.log(`❤️  Health Check:  ${base}/health\n`);
+  console.log(`📖 Swagger Docs:`);
+  console.log(`   ├── Users:       ${base}/api/users/api-docs/`);
+  console.log(`   ├── Orders:      ${base}/api/orders/api-docs/`);
+  console.log(`   ├── Payments:    ${base}/api/payments/api-docs/`);
+  console.log(`   ├── Restaurants: ${base}/api/restaurants/api-docs/`);
+  console.log(`   ├── Reviews:     ${base}/api/reviews/api-docs/`);
+  console.log(`   └── Delivery:    ${base}/api/delivery/api-docs/`);
+  console.log();
 });
