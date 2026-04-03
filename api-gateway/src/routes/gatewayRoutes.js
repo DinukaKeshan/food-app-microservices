@@ -1,87 +1,80 @@
-import express from "express";
+import { Router } from "express";
 import { createProxyMiddleware } from "http-proxy-middleware";
-import { SERVICES } from "../config/services.js";
 
-const router = express.Router();
+const router = Router();
 
-const createServiceProxy = (target, pathRewrite) => {
-  return createProxyMiddleware({
-    target,
-    changeOrigin: true,
-    pathRewrite,
+/**
+ * Proxy route definitions.
+ * Each entry maps a gateway path prefix to its target microservice URL.
+ *
+ * The full path is preserved when forwarding, so:
+ *   GET /api/payments       → http://localhost:5000/api/payments
+ *   POST /api/payments      → http://localhost:5000/api/payments
+ *   GET /api/payments/order/ORD1 → http://localhost:5000/api/payments/order/ORD1
+ */
+const proxyRoutes = [
+  { path: "/api/users", target: process.env.USER_SERVICE },
+  { path: "/api/orders", target: process.env.ORDER_SERVICE },
+  { path: "/api/payments", target: process.env.PAYMENT_SERVICE },
+  { path: "/api/restaurants", target: process.env.RESTAURANT_SERVICE },
+  { path: "/api/reviews", target: process.env.REVIEW_SERVICE },
+  { path: "/api/delivery", target: process.env.DELIVERY_SERVICE },
+];
 
-    // 🔥 timeout protection
-    proxyTimeout: 5000,
-    timeout: 5000,
+/**
+ * Swagger/docs proxy routes.
+ * Each microservice serves Swagger UI at /api-docs on its own port.
+ * These rules let you access them through the gateway like:
+ *   /api/payments/api-docs  → http://localhost:5000/api-docs
+ *   /api/users/api-docs     → http://localhost:8002/api-docs
+ *
+ * pathRewrite strips the service prefix so the target receives /api-docs.
+ */
+proxyRoutes.forEach(({ path, target }) => {
+  if (!target) return;
 
-    // 🔥 better error handling
-    onError: (err, req, res) => {
-      console.error(`❌ Proxy Error → ${target}`, err.message);
+  // Swagger UI route: /api/<service>/api-docs → /api-docs
+  router.use(
+    createProxyMiddleware({
+      target,
+      changeOrigin: true,
+      pathFilter: `${path}/api-docs`,
+      pathRewrite: {
+        [`^${path}/api-docs`]: "/api-docs",
+      },
+    })
+  );
 
-      if (!res.headersSent) {
-        res.status(503).json({
-          success: false,
-          message: "Service temporarily unavailable",
-          service: target,
-        });
-      }
-    },
+  // Swagger JSON spec: /api/<service>/api-docs.json → /api-docs.json
+  router.use(
+    createProxyMiddleware({
+      target,
+      changeOrigin: true,
+      pathFilter: `${path}/api-docs.json`,
+      pathRewrite: {
+        [`^${path}/api-docs.json`]: "/api-docs.json",
+      },
+    })
+  );
+});
 
-    // 🔥 log outgoing requests (optional but useful)
-    onProxyReq: (proxyReq, req) => {
-      console.log(`➡️ ${req.method} ${req.originalUrl} → ${target}`);
-    },
-  });
-};
+// Register API proxy routes (these must come AFTER the docs routes)
+proxyRoutes.forEach(({ path, target }) => {
+  if (!target) {
+    console.warn(`[Gateway] WARNING: No target URL configured for ${path}`);
+    return;
+  }
 
-// 🔥 ROUTES
+  router.use(
+    createProxyMiddleware({
+      target,
+      changeOrigin: true,
+      pathFilter: path,
+      logger: console,
+    })
+  );
 
-// User Service
-router.use(
-  "/users",
-  createServiceProxy(SERVICES.USER_SERVICE, {
-    "^/users": "",
-  }),
-);
-
-// Order Service
-router.use(
-  "/orders",
-  createServiceProxy(SERVICES.ORDER_SERVICE, {
-    "^/orders": "",
-  }),
-);
-
-// Payment Service
-router.use(
-  "/payments",
-  createServiceProxy(SERVICES.PAYMENT_SERVICE, {
-    "^/payments": "",
-  }),
-);
-
-// Restaurant Service
-router.use(
-  "/restaurants",
-  createServiceProxy(SERVICES.RESTAURANT_SERVICE, {
-    "^/restaurants": "",
-  }),
-);
-
-// Review Service
-router.use(
-  "/reviews",
-  createServiceProxy(SERVICES.REVIEW_SERVICE, {
-    "^/reviews": "",
-  }),
-);
-
-// Delivery Service
-router.use(
-  "/delivery",
-  createServiceProxy(SERVICES.DELIVERY_SERVICE, {
-    "^/delivery": "",
-  }),
-);
+  console.log(`[Gateway] ${path} → ${target}`);
+});
 
 export default router;
